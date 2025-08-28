@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ипотечный Калькулятор</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            min-height: 100vh;
+            background: radial-gradient(circle at 20% 20%, #3b2b2a 0%, #221714 40%, #160f0d 100%);
+            position: relative;
+            color: #f5f0e6;
+        }
+        /* Барочные декоративные элементы */
+        .ornate-frame {
+            position: relative;
+            border-radius: 18px;
+            background: linear-gradient(145deg, rgba(58,43,41,0.9), rgba(20,12,10,0.9));
+            border: 2px solid rgba(212,175,55,0.8);
+            box-shadow: inset 0 0 0 2px rgba(255,235,150,0.2), 0 12px 40px rgba(0,0,0,0.5);
+        }
+        .ornate-frame:before, .ornate-frame:after {
+            content: '';
+            position: absolute;
+            width: 90px; height: 90px;
+            border: 2px solid rgba(212,175,55,0.6);
+            border-radius: 50% 40% 60% 50% / 50% 60% 40% 50%;
+            filter: blur(0.2px);
+            opacity: 0.35;
+        }
+        .ornate-frame:before { top: -25px; left: -25px; }
+        .ornate-frame:after { bottom: -25px; right: -25px; }
+        .gilded-title {
+            font-family: 'Times New Roman', serif;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-align: center;
+            background: linear-gradient(90deg, #e9d27d, #c8a951, #fff1a8);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            text-shadow: 0 0 8px rgba(233,210,125,0.2);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 28px; }
+        .header { margin: 8px 0 24px; }
+        .header h1 { font-size: 2.4rem; }
+        .header p { color: #e6dac2; opacity: 0.85; text-align: center; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+        .card { padding: 24px; position: relative; }
+        .card h2 { font-weight: 700; font-size: 1.25rem; margin-bottom: 18px; color: #f3e9c9; }
+
+        .label { font-size: 0.95rem; margin-bottom: 6px; color: #eddca4; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .field { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(212,175,55,0.35); background: rgba(255,255,255,0.06); color: #fff4d6; }
+        .field::placeholder { color: rgba(255, 240, 200, 0.5); }
+        .field:focus { outline: none; border-color: rgba(255,230,120,0.7); box-shadow: 0 0 0 2px rgba(255,230,120,0.15); }
+
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn { padding: 14px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.6); color: #1c130f; font-weight: 700; cursor: pointer; }
+        .btn-primary { background: linear-gradient(135deg, #f6e27a, #c8a951); }
+        .btn-secondary { background: linear-gradient(135deg, #d5b87a, #b39153); }
+        .btn-ghost { background: transparent; color: #f5f0e6; border-color: rgba(212,175,55,0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .inline { display: flex; align-items: center; gap: 10px; }
+        .switch { display: inline-flex; align-items: center; gap: 10px; }
+        .switch input { transform: scale(1.2); }
+
+        .error { margin-top: 12px; background: rgba(160,40,40,0.2); border: 1px solid rgba(200,70,70,0.5); color: #ffb4b4; padding: 10px 12px; border-radius: 10px; display: none; }
+        .loading { display: none; margin-top: 10px; color: #f5f0e6; text-align: center; }
+
+        .results { margin-top: 8px; }
+        .result-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed rgba(212,175,55,0.25); }
+        .result-item:last-child { border-bottom: none; }
+        .highlight { color: #ffe082; font-size: 1.2rem; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid rgba(212,175,55,0.2); }
+        th { background: rgba(212,175,55,0.12); color: #f3e9c9; }
+
+        .chart-card { margin-top: 24px; padding: 20px; }
+        .chart-card canvas { width: 100%; }
+
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .input-row, .row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="gilded-title">Ипотечный Калькулятор</h1>
+            <p>Аннуитет, рассрочка, досрочные платежи, экспорт и интерактивная аналитика</p>
+        </div>
+
+        <div class="grid">
+            <div class="card ornate-frame">
+                <h2>Параметры кредита</h2>
+
+                <div class="inline" style="justify-content: space-between; margin-bottom: 10px;">
+                    <div class="switch">
+                        <input type="checkbox" id="installmentToggle" onchange="toggleInstallment()">
+                        <label for="installmentToggle">Рассрочка (0%)</label>
+                    </div>
+                </div>
+
+                <div class="input-row" style="margin-bottom: 10px;">
+                    <input type="text" id="property_price" class="field" placeholder="Первоначальная стоимость (₽)">
+                    <input type="text" id="down_payment" class="field" placeholder="Первоначальный взнос (₽)">
+                    <input type="text" id="loan_amount" class="field" placeholder="Сумма кредита (₽)">
+                </div>
+
+                <div class="input-row" style="margin-bottom: 10px;">
+                    <input type="number" id="years" class="field" placeholder="Срок (лет)" min="1" max="50">
+                    <input type="number" id="interest_rate" class="field" placeholder="Ставка (%)" min="0" step="0.1">
+                    <div></div>
+                </div>
+
+                <div class="ornate-frame" style="padding: 14px; margin-bottom: 12px;">
+                    <div class="inline" style="justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div class="inline" style="gap: 6px; color: #eddca4;">
+                            <span>Досрочный платеж:</span>
+                            <input type="text" id="prepay_amount" class="field" placeholder="Сумма (₽)" style="width: 180px;">
+                            <span>в</span>
+                            <input type="number" id="prepay_month" class="field" placeholder="Месяц" min="1" style="width: 120px;">
+                        </div>
+                        <div class="inline" style="gap: 12px; color: #eddca4;">
+                            <span>Стратегия:</span>
+                            <label class="inline"><input type="radio" name="strategy" value="reduce_term" checked> сокращать срок</label>
+                            <label class="inline"><input type="radio" name="strategy" value="reduce_payment"> уменьшать платеж</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <button id="calcBtn" class="btn btn-primary" onclick="calculateMortgage()">Рассчитать</button>
+                    <div class="inline" style="gap: 10px;">
+                        <button id="csvBtn" class="btn btn-secondary" onclick="downloadCSV()" disabled>Скачать CSV</button>
+                        <button id="xlsxBtn" class="btn btn-secondary" onclick="downloadXLSX()" disabled>Скачать Excel</button>
+                    </div>
+                </div>
+
+                <div class="loading" id="loading">Выполняется расчет...</div>
+                <div class="error" id="error-message"></div>
+            </div>
+
+            <div class="card ornate-frame">
+                <h2>Результаты расчета</h2>
+                <div id="results-card" class="results">
+                    <div class="result-item"><span>Первоначальная стоимость:</span><span id="res-property-price">0 ₽</span></div>
+                    <div class="result-item"><span>Первоначальный взнос:</span><span id="res-down-payment">0 ₽</span></div>
+                    <div class="result-item"><span>Ежемесячный платеж:</span><span class="highlight" id="monthly-payment">0 ₽</span></div>
+                    <div class="result-item"><span>Общая сумма выплат:</span><span id="total-payment">0 ₽</span></div>
+                    <div class="result-item"><span>Сумма переплаты:</span><span class="highlight" id="overpayment">0 ₽</span></div>
+                    <div class="result-item"><span>Процент переплаты:</span><span id="overpayment-percentage">0%</span></div>
+                    <div class="result-item"><span>Количество платежей:</span><span id="total-payments">0</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card ornate-frame" id="schedule-card" style="margin-top: 20px; display: none;">
+            <h2>График платежей (первые 12 месяцев)</h2>
+            <div style="overflow-x: auto;">
+                <table id="schedule-table">
+                    <thead>
+                        <tr>
+                            <th>Месяц</th>
+                            <th>Платеж</th>
+                            <th>Основной долг</th>
+                            <th>Проценты</th>
+                            <th>Досрочный платеж</th>
+                            <th>Остаток долга</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card ornate-frame chart-card" id="chart-card" style="display: none;">
+            <h2>Динамика остатка долга</h2>
+            <canvas id="amortizationChart" height="120"></canvas>
+            <div class="inline" style="gap: 10px; margin-top: 8px;">
+                <button class="btn btn-ghost" onclick="resetZoom()">Сбросить масштаб</button>
+                <span style="font-size: 0.9rem; color: #eddca4;">Масштабируйте колесом мыши, перетаскивайте для панорамирования</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
+    <script>
+        let lastInputs = null;
+        let chartInstance = null;
+
+        function toggleInstallment() {
+            const checked = document.getElementById('installmentToggle').checked;
+            const rateInput = document.getElementById('interest_rate');
+            rateInput.disabled = checked;
+            rateInput.style.visibility = checked ? 'hidden' : 'visible';
+            rateInput.style.position = checked ? 'absolute' : 'static';
+        }
+
+        function onlyDigits(str) { return (str || '').toString().replace(/[^0-9.-]/g, ''); }
+        function formatWithSpaces(num) {
+            if (num === '' || num === null || num === undefined || isNaN(num)) return '';
+            const n = Math.trunc(Number(num));
+            return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        }
+        function setFormattedValue(el, valueNumber) {
+            el.value = formatWithSpaces(valueNumber);
+        }
+        function parseInputValue(elId) { return Number(onlyDigits(document.getElementById(elId).value || '0')); }
+
+        function updateLoanFromPriceDown() {
+            const price = parseInputValue('property_price');
+            const down = parseInputValue('down_payment');
+            const loan = Math.max(0, price - down);
+            setFormattedValue(document.getElementById('loan_amount'), loan);
+            return { price, down, loan };
+        }
+
+        function attachMoneyFormatter(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', () => {
+                const caretEnd = el.selectionStart;
+                const digits = onlyDigits(el.value);
+                el.value = formatWithSpaces(digits);
+                // простая реализация: курсор в конец
+                el.setSelectionRange(el.value.length, el.value.length);
+                if (id === 'property_price' || id === 'down_payment') updateLoanFromPriceDown();
+            });
+            el.addEventListener('blur', () => {
+                const digits = onlyDigits(el.value);
+                el.value = formatWithSpaces(digits);
+                if (id === 'property_price' || id === 'down_payment') updateLoanFromPriceDown();
+            });
+        }
+
+        function calculateMortgage() {
+            const loanAmount = parseInputValue('loan_amount');
+            const years = parseInt(document.getElementById('years').value);
+            const installment = document.getElementById('installmentToggle').checked;
+            const interestRate = installment ? 0 : parseFloat(document.getElementById('interest_rate').value || '0');
+            const prepayAmount = parseInputValue('prepay_amount');
+            const prepayMonth = parseInt(document.getElementById('prepay_month').value || '0');
+            const strategy = (document.querySelector('input[name="strategy"]:checked') || {}).value || 'reduce_term';
+
+            if (!isFinite(loanAmount) || !isFinite(years) || (!installment && !isFinite(interestRate))) {
+                showError('Пожалуйста, заполните поля корректно');
+                return;
+            }
+            if (loanAmount <= 0 || years <= 0 || interestRate < 0) {
+                showError('Все значения должны быть положительными');
+                return;
+            }
+
+            const calcBtn = document.getElementById('calcBtn');
+            const csvBtn = document.getElementById('csvBtn');
+            const xlsxBtn = document.getElementById('xlsxBtn');
+            calcBtn.disabled = true; csvBtn.disabled = true; xlsxBtn.disabled = true;
+            showLoading(true); hideError();
+
+            const payload = {
+                loan_amount: loanAmount,
+                years: years,
+                installment: installment,
+                interest_rate: interestRate,
+                prepayments: prepayAmount > 0 && prepayMonth > 0 ? [{ amount: prepayAmount, month: prepayMonth }] : [],
+                strategy: strategy
+            };
+
+            fetch('/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                .then(r => r.json())
+                .then(data => {
+                    showLoading(false); calcBtn.disabled = false;
+                    if (data.error) { showError(data.error); return; }
+                    lastInputs = payload; csvBtn.disabled = false; xlsxBtn.disabled = false;
+                    displayResults(data);
+                    updatePaymentSchedule(data.payment_schedule);
+                    renderChart(data.full_schedule);
+                })
+                .catch(err => { showLoading(false); calcBtn.disabled = false; showError('Ошибка при расчете'); console.error(err); });
+        }
+
+        function renderChart(fullSchedule) {
+            const chartCard = document.getElementById('chart-card');
+            const ctx = document.getElementById('amortizationChart').getContext('2d');
+            if (!Array.isArray(fullSchedule) || fullSchedule.length === 0) { chartCard.style.display = 'none'; return; }
+            const labels = fullSchedule.map(p => p.month);
+            const balanceData = fullSchedule.map(p => p.remaining_balance);
+
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Остаток долга', data: balanceData, borderColor: '#e9d27d', backgroundColor: 'rgba(233,210,125,0.18)', tension: 0.25, fill: true, pointRadius: 2, pointHoverRadius: 5 }] },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { labels: { color: '#f5f0e6' } },
+                        tooltip: { callbacks: { label: ctx => formatCurrency(ctx.parsed.y) } },
+                        zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#e6dac2' }, grid: { color: 'rgba(212,175,55,0.15)' } },
+                        y: { ticks: { color: '#e6dac2', callback: v => formatCurrency(v) }, grid: { color: 'rgba(212,175,55,0.15)' } }
+                    },
+                    onClick: (evt, elements) => {
+                        const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+                        if (points.length) {
+                            const i = points[0].index; const item = fullSchedule[i];
+                            if (item) {
+                                const msg = `Месяц ${item.month}: платеж ${formatCurrency(item.payment)}, проценты ${formatCurrency(item.interest)}, остаток ${formatCurrency(item.remaining_balance)}`;
+                                showError(msg);
+                                setTimeout(hideError, 3000);
+                            }
+                        }
+                    }
+                }
+            });
+            chartCard.style.display = 'block';
+        }
+
+        function resetZoom() { if (chartInstance) chartInstance.resetZoom(); }
+
+        function downloadCSV() {
+            if (!lastInputs) return;
+            const params = new URLSearchParams({
+                loan_amount: String(lastInputs.loan_amount),
+                years: String(lastInputs.years),
+                installment: String(lastInputs.installment),
+                interest_rate: String(lastInputs.interest_rate),
+                strategy: String(lastInputs.strategy),
+                prepay_amount: String((lastInputs.prepayments[0] || {}).amount || 0),
+                prepay_month: String((lastInputs.prepayments[0] || {}).month || 0)
+            });
+            window.location.href = `/download-csv?${params.toString()}`;
+        }
+
+        function downloadXLSX() {
+            if (!lastInputs) return;
+            const params = new URLSearchParams({
+                loan_amount: String(lastInputs.loan_amount),
+                years: String(lastInputs.years),
+                installment: String(lastInputs.installment),
+                interest_rate: String(lastInputs.interest_rate),
+                strategy: String(lastInputs.strategy),
+                prepay_amount: String((lastInputs.prepayments[0] || {}).amount || 0),
+                prepay_month: String((lastInputs.prepayments[0] || {}).month || 0)
+            });
+            window.location.href = `/download-xlsx?${params.toString()}`;
+        }
+
+        function displayResults(data) {
+            const price = parseInputValue('property_price');
+            const down = parseInputValue('down_payment');
+            document.getElementById('res-property-price').textContent = formatCurrency(price);
+            document.getElementById('res-down-payment').textContent = formatCurrency(down);
+
+            document.getElementById('monthly-payment').textContent = formatCurrency(data.monthly_payment);
+            document.getElementById('total-payment').textContent = formatCurrency(data.total_payment);
+            document.getElementById('overpayment').textContent = formatCurrency(data.overpayment);
+            document.getElementById('overpayment-percentage').textContent = data.overpayment_percentage + '%';
+            document.getElementById('total-payments').textContent = data.total_payments;
+        }
+
+        function updatePaymentSchedule(schedule) {
+            const body = document.getElementById('schedule-body');
+            const card = document.getElementById('schedule-card');
+            body.innerHTML = '';
+            schedule.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${p.month}</td>
+                    <td>${formatCurrency(p.payment)}</td>
+                    <td>${formatCurrency(p.principal)}</td>
+                    <td>${formatCurrency(p.interest)}</td>
+                    <td>${formatCurrency(p.extra || 0)}</td>
+                    <td>${formatCurrency(p.remaining_balance)}</td>
+                `;
+                body.appendChild(tr);
+            });
+            card.style.display = 'block';
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+        }
+        function showLoading(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }
+        function showError(msg) { const el = document.getElementById('error-message'); el.textContent = msg; el.style.display = 'block'; }
+        function hideError() { document.getElementById('error-message').style.display = 'none'; }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            ['property_price','down_payment','loan_amount','prepay_amount'].forEach(attachMoneyFormatter);
+            updateLoanFromPriceDown();
+            ['years','interest_rate','prepay_month'].forEach(id => {
+                const el = document.getElementById(id); if (!el) return;
+                el.addEventListener('keypress', e => { if (e.key === 'Enter') calculateMortgage(); });
+            });
+        });
+    </script>
+</body>
+</html>
